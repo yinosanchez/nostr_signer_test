@@ -1,0 +1,23 @@
+[info]
+relay_url = "ws://0.0.0.0:7777"
+name = "Local Nostr Relay"
+description = "Local Nostr Relay for NIP-46 Bunker"
+pubkey = "none"
+contact = "none"
+
+[network]
+port = 7777
+address = "0.0.0.0"
+
+[options]
+reject_future_seconds = 1800
+
+[retention]
+max_msg_size = 524288
+
+[database]
+engine = "sqlite"
+data_directory = "/tmp/nostr-db"
+min_conn = 1
+max_conn = 8
+

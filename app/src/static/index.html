@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nostr Local Signer (NIP-46 Bunker)</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1>Nostr Local Signer</h1>
+          <p class="subtitle">Bunker NIP-46 & Gestor de Identidad Local</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="relay-status-badge" class="badge badge-offline">
+          <span class="status-dot"></span>
+          <span id="relay-status-text">Relay: Conectando...</span>
+        </div>
+        <button id="btn-refresh" class="btn btn-secondary" title="Actualizar datos">
+          🔄 Actualizar
+        </button>
+      </div>
+    </header>
+
+    <!-- Top Alert / Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Active Bunker Info Card -->
+    <section class="card active-bunker-card">
+      <div class="card-header">
+        <h2>Identidad Activa & Bunker NIP-46</h2>
+        <span id="active-session-count" class="badge badge-info">0 sesiones</span>
+      </div>
+
+      <div class="bunker-content">
+        <div class="active-identity-summary">
+          <div class="summary-item">
+            <span class="label">Alias Activo:</span>
+            <span id="active-alias" class="value highlight">-</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">npub:</span>
+            <span id="active-npub" class="value code-font">-</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Total Firmas:</span>
+            <span id="active-sig-count" class="value">0</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Último Uso:</span>
+            <span id="active-last-used" class="value">-</span>
+          </div>
+        </div>
+
+        <!-- Relay Selector for Bunker Connection -->
+        <div class="relay-selection-section">
+          <label for="relay-select"><strong>Relay de Comunicación NIP-46:</strong></label>
+          <div class="input-copy-group">
+            <select id="relay-select" class="form-select">
+              <option value="ws://localhost:7777">Relay Local (ws://localhost:7777)</option>
+              <option value="wss://relay.damus.io">Damus (wss://relay.damus.io) - Recomendado Stacker News</option>
+              <option value="wss://nos.lol">Nos.lol (wss://nos.lol) - Compatible HTTPS</option>
+              <option value="wss://relay.nsec.app">Nsec.app (wss://relay.nsec.app)</option>
+              <option value="custom">Otro relay personalizado (WSS)...</option>
+            </select>
+            <input type="text" id="custom-relay-input" class="hidden" placeholder="wss://tu-relay-favorito.com">
+            <button id="btn-apply-relay" class="btn btn-secondary">Cambiar Relay</button>
+          </div>
+          <p class="help-text">Para autenticarte desde servicios web HTTPS como <strong>Stacker News</strong>, selecciona un relay con <code>wss://</code> (ej. Damus).</p>
+        </div>
+
+        <div class="connection-section">
+          <label for="bunker-uri-input"><strong>Connection String del Bunker (para DApps / Clientes):</strong></label>
+          <div class="input-copy-group">
+            <input type="text" id="bunker-uri-input" readonly placeholder="Genera o selecciona una identidad para obtener el connection string">
+            <button id="btn-copy-bunker" class="btn btn-primary">Copiar URI</button>
+          </div>
+          <p class="help-text">Ingresa este string en cualquier cliente compatible con NIP-46 (Bunker) para autorizar firmas automáticas.</p>
+        </div>
+
+        <!-- Connect by String -->
+        <div class="connect-string-section">
+          <label for="connect-string-input"><strong>O conectar mediante string externo (nostrconnect://):</strong></label>
+          <div class="input-copy-group">
+            <input type="text" id="connect-string-input" placeholder="nostrconnect://<client_pubkey>?relay=...&secret=...">
+            <button id="btn-submit-connect-string" class="btn btn-secondary">Conectar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Identities Management Section -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Identidades Registradas</h2>
+        <button id="btn-open-create-modal" class="btn btn-success">+ Generar Nueva Identidad</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="identities-table">
+          <thead>
+            <tr>
+              <th>Estado</th>
+              <th>Alias</th>
+              <th>npub (Clave Pública)</th>
+              <th>Firmas</th>
+              <th>Último Uso</th>
+              <th>Fecha Creación</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="identities-table-body">
+            <tr>
+              <td colspan="7" class="text-center">Cargando identidades...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal: Generar Identidad -->
+  <div id="modal-create-identity" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Generar Nueva Identidad Criptográfica</h3>
+        <button id="btn-close-modal" class="btn-close">&times;</button>
+      </div>
+      <form id="form-create-identity">
+        <div class="form-group">
+          <label for="new-alias">Alias / Nombre de la Identidad *</label>
+          <input type="text" id="new-alias" required placeholder="Ej: Mi Identidad Personal" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label for="new-description">Descripción (Opcional)</label>
+          <input type="text" id="new-description" placeholder="Ej: Para pruebas en relay local" maxlength="255">
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" class="btn btn-success">Generar Clave</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
+
