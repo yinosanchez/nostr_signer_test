@@ -42,6 +42,19 @@ class BunkerEngine:
         self._active_identity: Optional[IdentityItem] = None
         self._active_keys: Optional[Keys] = None
 
+    def _is_ws_open(self) -> bool:
+        """Robustly checks if the websocket connection is open across websockets versions."""
+        if not self._ws:
+            return False
+        state = getattr(self._ws, "state", None)
+        if state is not None:
+            return getattr(state, "name", str(state)) == "OPEN"
+        if hasattr(self._ws, "open"):
+            return bool(self._ws.open)
+        if hasattr(self._ws, "closed"):
+            return not bool(self._ws.closed)
+        return self.relay_connected
+
     def get_bunker_connection_string(self) -> Optional[str]:
         if not self._active_identity:
             return None
@@ -159,7 +172,7 @@ class BunkerEngine:
         self._setup_keys(target_identity)
 
         # Re-subscribe on active WS if connected
-        if self._ws and not self._ws.closed:
+        if self._is_ws_open():
             await self._send_subscription(self._ws)
 
         return target_identity
@@ -317,7 +330,7 @@ class BunkerEngine:
         rpc_handler.active_sessions[self._active_identity.id].add(client_pubkey_hex)
 
         # Send ACK / connect acknowledgment to client if WS is open
-        if self._ws and not self._ws.closed:
+        if self._is_ws_open():
             client_pubkey = PublicKey.parse(client_pubkey_hex)
             connect_resp_rpc = {
                 "id": f"conn-{client_pubkey_hex[:8]}",

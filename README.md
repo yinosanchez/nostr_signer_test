@@ -30,7 +30,12 @@ Aplicación web local y conteinerizada para la gestión de identidades criptogr�
 
 1. **Levantar los contenedores:**
    ```bash
-   docker compose up --build
+   docker compose up --build -d
+   ```
+
+   o simplemente:
+   ```bash
+   ./run.sh
    ```
 
 2. **Abrir la interfaz web:**
